@@ -53,8 +53,17 @@ export const authService = {
     return raw ? JSON.parse(raw) : null;
   },
 
+  publicRegister: async (data: any): Promise<ApiResponse<{ token: string; admin: Admin }>> => {
+    try {
+      const res = await apiClient.post('/auth/setup', data);
+      return res.data;
+    } catch (err: any) {
+      throw err.response?.data || { success: false, message: 'Admin registration failed' };
+    }
+  },
+
   register: async (data: any): Promise<ApiResponse<{ token: string; admin: Admin }>> => {
-    return authService.setupFirstAdmin(data);
+    return authService.publicRegister(data);
   },
 
   forgotPassword: async (email: string) => {

@@ -15,10 +15,11 @@ export const getSetupStatus = async (req: Request, res: Response) => {
 export const setupFirstAdmin = async (req: Request, res: Response) => {
   try {
     const result = await AuthService.setupFirstAdmin(req.body);
-    return sendResponse(res, 201, true, 'First Executive Admin registered successfully', result);
+    return sendResponse(res, 201, true, 'Admin account created successfully', result);
   } catch (error: any) {
-    const status = error.message.includes('already been completed') ? 403 : 400;
-    return sendResponse(res, status, false, error.message || 'First admin setup failed');
+    const isDuplicate = error.message && error.message.includes('already exists');
+    const status = isDuplicate ? 400 : 400;
+    return sendResponse(res, status, false, error.message || 'Admin account creation failed');
   }
 };
 

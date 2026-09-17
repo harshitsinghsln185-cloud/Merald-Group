@@ -36,22 +36,24 @@ export class AuthService {
     };
   }
 
-  // Secure First-Admin Setup (Only allowed when 0 admins exist)
+  // Secure Public Admin Setup
   static async setupFirstAdmin(data: any) {
-    const status = await this.getSetupStatus();
-    if (!status.setupRequired) {
-      throw new Error('Initial admin setup has already been completed. Public setup is disabled.');
-    }
-
     const { name, email, country, city, officeAddress, password } = data;
+    const cleanEmail = (email || '').toLowerCase().trim();
 
+    // Check duplicate email in DB
     try {
+      const existing = await Admin.findOne({ email: cleanEmail });
+      if (existing) {
+        throw new Error('An admin account with this email address already exists');
+      }
+
       const admin = await Admin.create({
-        name,
-        email: email.toLowerCase(),
-        country,
-        city,
-        officeAddress,
+        name: name ? name.trim() : '',
+        email: cleanEmail,
+        country: country ? country.trim() : '',
+        city: city ? city.trim() : '',
+        officeAddress: officeAddress ? officeAddress.trim() : '',
         password,
         status: 'ACTIVE',
       });
@@ -71,17 +73,27 @@ export class AuthService {
         },
       };
     } catch (dbErr: any) {
+      if (dbErr.message && dbErr.message.includes('already exists')) throw dbErr;
+      if (dbErr.code === 11000 || (dbErr.message && dbErr.message.includes('E11000'))) {
+        throw new Error('An admin account with this email address already exists');
+      }
       if (process.env.NODE_ENV === 'production') throw dbErr;
+
+      // In-memory fallback for local dev without MongoDB
+      const existingInMemory = inMemoryAdmins.find((a) => a.email === cleanEmail);
+      if (existingInMemory) {
+        throw new Error('An admin account with this email address already exists');
+      }
 
       const salt = await bcrypt.genSalt(10);
       const hash = await bcrypt.hash(password, salt);
       const mock = {
         _id: 'admin_' + Date.now(),
-        name,
-        email: email.toLowerCase(),
-        country,
-        city,
-        officeAddress,
+        name: name ? name.trim() : '',
+        email: cleanEmail,
+        country: country ? country.trim() : '',
+        city: city ? city.trim() : '',
+        officeAddress: officeAddress ? officeAddress.trim() : '',
         passwordHash: hash,
         status: 'ACTIVE',
         createdAt: new Date(),

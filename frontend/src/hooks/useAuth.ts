@@ -15,9 +15,6 @@ export const useAuth = () => {
 
   const register = async (data: any) => {
     const res = await authService.register(data);
-    if (res.success && res.data?.admin) {
-      setAdmin(res.data.admin);
-    }
     return res;
   };
 

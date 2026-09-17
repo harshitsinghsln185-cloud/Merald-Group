@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Building2, Lock, Mail, ShieldCheck, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Building2, Lock, Mail, ShieldCheck, ArrowRight, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
@@ -16,11 +16,13 @@ type LoginFormData = z.infer<typeof loginSchema>;
 interface LoginFormProps {
   onLoginSubmit: (data: LoginFormData) => Promise<any>;
   onOpenForgotPassword: () => void;
+  onOpenRegister?: () => void;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({
   onLoginSubmit,
   onOpenForgotPassword,
+  onOpenRegister,
 }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -151,6 +153,22 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               )}
             </Button>
           </form>
+
+          {/* Public Admin Registration Link */}
+          {onOpenRegister && (
+            <div className="mt-6 pt-4 border-t border-white/8 text-center">
+              <p className="text-xs text-slate-400 font-medium">
+                Need an administrator account?{' '}
+                <button
+                  type="button"
+                  onClick={onOpenRegister}
+                  className="text-emerald-400 hover:text-emerald-300 font-bold hover:underline cursor-pointer ml-1 inline-flex items-center gap-1 transition-colors"
+                >
+                  Create Admin <UserPlus className="w-3.5 h-3.5" />
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

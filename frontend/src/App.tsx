@@ -167,6 +167,7 @@ function AppContent() {
         <LoginForm
           onLoginSubmit={login}
           onOpenForgotPassword={() => setShowForgotPassword(true)}
+          onOpenRegister={() => setAuthView('register')}
         />
         <ForgotPasswordModal
           isOpen={showForgotPassword}
