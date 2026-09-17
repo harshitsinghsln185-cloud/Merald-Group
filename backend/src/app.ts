@@ -2,6 +2,7 @@ import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
 import authRoutes from './modules/auth/auth.routes';
 import employeeRoutes from './modules/employees/employee.routes';
@@ -13,31 +14,66 @@ dotenv.config();
 
 const app: Application = express();
 
-// Configure CORS for production and development
-const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(',').map((u) => u.trim())
-  : [];
+// Configure authoritative CORS for production and development
+const getCleanOrigins = (raw?: string): string[] => {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((u) => u.trim().toLowerCase().replace(/\/$/, ''))
+    .filter(Boolean);
+};
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
+const DEFAULT_DEV_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5000',
+];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // 1. Allow requests with no origin (e.g. mobile apps, Postman, server-to-server health checks)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const cleanOrigin = origin.trim().toLowerCase().replace(/\/$/, '');
+    const configuredOrigins = getCleanOrigins(process.env.CLIENT_URL);
+
+    // 2. Development Mode: Allow local frontend dev ports + any configured CLIENT_URL
+    if (process.env.NODE_ENV !== 'production') {
       if (
-        !origin ||
-        process.env.NODE_ENV !== 'production' ||
-        allowedOrigins.length === 0 ||
-        allowedOrigins.includes(origin) ||
-        allowedOrigins.includes('*')
+        DEFAULT_DEV_ORIGINS.includes(cleanOrigin) ||
+        configuredOrigins.includes(cleanOrigin) ||
+        configuredOrigins.includes('*') ||
+        cleanOrigin.startsWith('http://localhost:') ||
+        cleanOrigin.startsWith('http://127.0.0.1:')
       ) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS policy blocked access from origin: ${origin}`));
+        return callback(null, true);
       }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-  })
-);
+      return callback(null, true); // Fallback allow in local dev mode
+    }
+
+    // 3. Production Mode: Match against process.env.CLIENT_URL origins
+    if (configuredOrigins.length > 0) {
+      if (configuredOrigins.includes(cleanOrigin)) {
+        return callback(null, true);
+      }
+    } else {
+      // Fallback if CLIENT_URL env var is not yet configured on Render initialization
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS policy blocked access from origin: ${origin}`));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -69,12 +105,15 @@ app.use('/api/admin', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/invoice', invoiceRoutes);
 
-// Serve Static Frontend dist if building in production
-if (process.env.NODE_ENV === 'production') {
-  const buildPath = path.join(__dirname, '../../frontend/dist');
-  app.use(express.static(buildPath));
-  app.get('*', (req: Request, res: Response) => {
-    res.sendFile(path.resolve(buildPath, 'index.html'));
+// Serve Static Frontend dist ONLY if present (e.g. monorepo local preview)
+const frontendBuildPath = path.join(__dirname, '../../frontend/dist');
+if (fs.existsSync(path.resolve(frontendBuildPath, 'index.html'))) {
+  app.use(express.static(frontendBuildPath));
+  app.get('*', (req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/v1')) {
+      return next();
+    }
+    res.sendFile(path.resolve(frontendBuildPath, 'index.html'));
   });
 }
 
