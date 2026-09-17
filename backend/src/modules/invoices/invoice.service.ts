@@ -36,7 +36,8 @@ export class InvoiceService {
 
       return invoice;
     } catch (dbErr: any) {
-      if (dbErr.message.includes('not found')) throw dbErr;
+      if (dbErr.message && dbErr.message.includes('not found')) throw dbErr;
+      if (process.env.NODE_ENV === 'production') throw dbErr;
 
       return {
         _id: 'inv_' + Date.now(),
@@ -69,6 +70,7 @@ export class InvoiceService {
       }
       return invoice;
     } catch (dbErr) {
+      if (process.env.NODE_ENV === 'production') throw dbErr;
       return this.generateInvoice(employeeId);
     }
   }

@@ -13,16 +13,33 @@ dotenv.config();
 
 const app: Application = express();
 
-// Middlewares
+// Configure CORS for production and development
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(',').map((u) => u.trim())
+  : [];
+
 app.use(
   cors({
-    origin: '*',
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        process.env.NODE_ENV !== 'production' ||
+        allowedOrigins.length === 0 ||
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.includes('*')
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS policy blocked access from origin: ${origin}`));
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve Uploads if present
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -36,11 +53,16 @@ app.get('/api/v1/health', (req: Request, res: Response) => {
   });
 });
 
-// API Routes Namespace /api/v1
+// API Routes Namespace /api/v1 and route aliases
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admins', authRoutes);
 app.use('/api/v1/employees', employeeRoutes);
 app.use('/api/v1/invoices', invoiceRoutes);
+
+app.use('/v1/auth', authRoutes);
+app.use('/v1/admins', authRoutes);
+app.use('/v1/employees', employeeRoutes);
+app.use('/v1/invoices', invoiceRoutes);
 
 // Fallback compatibility routes for legacy frontend calls
 app.use('/api/admin', authRoutes);

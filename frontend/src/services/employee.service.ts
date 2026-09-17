@@ -113,7 +113,10 @@ export const employeeService = {
     try {
       const res = await apiClient.get('/employees', { params });
       return res.data;
-    } catch (err) {
+    } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw err.response?.data || { success: false, message: 'Failed to fetch employee list' };
+      }
       let list = [...localEmployees];
       if (params.status) {
         list = list.filter((e) => e.status.toUpperCase() === params.status.toUpperCase());
@@ -160,7 +163,10 @@ export const employeeService = {
     try {
       const res = await apiClient.get(`/employees/${id}`);
       return res.data;
-    } catch (err) {
+    } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw err.response?.data || { success: false, message: 'Employee not found' };
+      }
       const found = localEmployees.find((e) => e._id === id || e.employeeId === id || e.employeeCode === id);
       if (!found) throw { success: false, message: 'Employee not found' };
       return { success: true, message: 'Retrieved employee', data: found };
@@ -171,7 +177,10 @@ export const employeeService = {
     try {
       const res = await apiClient.post('/employees', data);
       return res.data;
-    } catch (err) {
+    } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw err.response?.data || { success: false, message: 'Failed to create employee' };
+      }
       const nextId = `EMP-${1000 + localEmployees.length + 1}`;
       const nextCode = `MGD-${Math.floor(1000 + Math.random() * 9000)}`;
       const newEmp: Employee = {
@@ -201,7 +210,10 @@ export const employeeService = {
     try {
       const res = await apiClient.put(`/employees/${id}`, updates);
       return res.data;
-    } catch (err) {
+    } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw err.response?.data || { success: false, message: 'Failed to update employee' };
+      }
       const idx = localEmployees.findIndex((e) => e._id === id || e.employeeId === id);
       if (idx !== -1) {
         localEmployees[idx] = { ...localEmployees[idx], ...updates };
@@ -215,7 +227,10 @@ export const employeeService = {
     try {
       const res = await apiClient.delete(`/employees/${id}`);
       return res.data;
-    } catch (err) {
+    } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw err.response?.data || { success: false, message: 'Failed to delete employee' };
+      }
       localEmployees = localEmployees.filter((e) => e._id !== id && e.employeeId !== id);
       return { success: true, message: 'Employee record deleted successfully' };
     }
@@ -225,7 +240,10 @@ export const employeeService = {
     try {
       const res = await apiClient.get(`/employees/search`, { params: { passportNumber } });
       return res.data;
-    } catch (err) {
+    } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw err.response?.data || { success: false, message: `No employee found with passport ${passportNumber}` };
+      }
       const found = localEmployees.find((e) => e.passportNumber.toUpperCase() === passportNumber.toUpperCase());
       if (!found) throw { success: false, message: `No employee found with passport ${passportNumber}` };
       return { success: true, message: 'Search result', data: found };
@@ -236,7 +254,10 @@ export const employeeService = {
     try {
       const res = await apiClient.get(`/employees/search`, { params: { employeeCode } });
       return res.data;
-    } catch (err) {
+    } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw err.response?.data || { success: false, message: `No employee found with code ${employeeCode}` };
+      }
       const found = localEmployees.find(
         (e) => e.employeeCode.toUpperCase() === employeeCode.toUpperCase() || e.employeeId.toUpperCase() === employeeCode.toUpperCase()
       );

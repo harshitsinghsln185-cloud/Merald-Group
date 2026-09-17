@@ -6,7 +6,10 @@ export const invoiceService = {
     try {
       const res = await apiClient.get(`/invoices/${employeeId}`);
       return res.data;
-    } catch (err) {
+    } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw err.response?.data || { success: false, message: 'Failed to fetch invoice data' };
+      }
       const invNum = `MGD-INV-2026-${Math.floor(100000 + Math.random() * 900000)}`;
       return {
         success: true,
@@ -39,7 +42,10 @@ export const invoiceService = {
     try {
       const res = await apiClient.post(`/invoices/generate/${employeeId}`);
       return res.data;
-    } catch (err) {
+    } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw err.response?.data || { success: false, message: 'Failed to generate invoice' };
+      }
       return invoiceService.getInvoice(employeeId);
     }
   },

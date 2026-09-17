@@ -3,10 +3,17 @@ import bcrypt from 'bcryptjs';
 import Admin, { IAdmin } from './auth.model';
 
 export const generateToken = (id: string, email: string, name: string): string => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const secret = process.env.JWT_SECRET || (isProduction ? '' : 'merald_group_enterprise_secret_jwt_key_2026_super_secure');
+
+  if (!secret && isProduction) {
+    throw new Error('JWT_SECRET environment variable is missing');
+  }
+
   return jwt.sign(
     { id, email, name },
-    process.env.JWT_SECRET || 'merald_group_enterprise_secret_jwt_key_2026_super_secure',
-    { expiresIn: '7d' }
+    secret || 'merald_group_enterprise_secret_jwt_key_2026_super_secure',
+    { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
   );
 };
 
@@ -20,6 +27,7 @@ export class AuthService {
     try {
       count = await Admin.countDocuments();
     } catch (err) {
+      if (process.env.NODE_ENV === 'production') throw err;
       count = inMemoryAdmins.length;
     }
     return {
@@ -63,6 +71,8 @@ export class AuthService {
         },
       };
     } catch (dbErr: any) {
+      if (process.env.NODE_ENV === 'production') throw dbErr;
+
       const salt = await bcrypt.genSalt(10);
       const hash = await bcrypt.hash(password, salt);
       const mock = {
@@ -123,8 +133,9 @@ export class AuthService {
       }
     } catch (dbErr: any) {
       if (dbErr.message && dbErr.message.includes('disabled')) throw dbErr;
+      if (process.env.NODE_ENV === 'production') throw dbErr;
 
-      // In-memory fallback
+      // In-memory fallback for local dev
       const found = inMemoryAdmins.find((a) => a.email === cleanEmail);
       if (found) {
         if (found.status === 'DISABLED') {
@@ -158,6 +169,7 @@ export class AuthService {
       const list = await Admin.find().select('-password').sort({ createdAt: -1 });
       return list;
     } catch (err) {
+      if (process.env.NODE_ENV === 'production') throw err;
       return inMemoryAdmins.map(({ passwordHash, ...rest }) => rest);
     }
   }
@@ -195,6 +207,7 @@ export class AuthService {
       };
     } catch (dbErr: any) {
       if (dbErr.message && dbErr.message.includes('already exists')) throw dbErr;
+      if (process.env.NODE_ENV === 'production') throw dbErr;
 
       const salt = await bcrypt.genSalt(10);
       const hash = await bcrypt.hash(password, salt);
@@ -238,6 +251,9 @@ export class AuthService {
       if (!updated) throw new Error('Admin account not found');
       return updated;
     } catch (err: any) {
+      if (err.message && err.message.includes('not found')) throw err;
+      if (process.env.NODE_ENV === 'production') throw err;
+
       const idx = inMemoryAdmins.findIndex((a) => a._id === id);
       if (idx === -1) throw new Error('Admin account not found');
       if (updates.password) {
@@ -256,6 +272,7 @@ export class AuthService {
     try {
       activeCount = await Admin.countDocuments({ status: 'ACTIVE' });
     } catch (err) {
+      if (process.env.NODE_ENV === 'production') throw err;
       activeCount = inMemoryAdmins.filter((a) => a.status === 'ACTIVE').length;
     }
 
@@ -267,7 +284,10 @@ export class AuthService {
       const deleted = await Admin.findByIdAndDelete(id);
       if (!deleted) throw new Error('Admin account not found');
       return true;
-    } catch (err) {
+    } catch (err: any) {
+      if (err.message && err.message.includes('not found')) throw err;
+      if (process.env.NODE_ENV === 'production') throw err;
+
       const idx = inMemoryAdmins.findIndex((a) => a._id === id);
       if (idx === -1) throw new Error('Admin account not found');
       inMemoryAdmins.splice(idx, 1);

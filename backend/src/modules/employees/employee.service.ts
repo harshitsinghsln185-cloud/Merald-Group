@@ -219,6 +219,7 @@ const generateIds = async () => {
   try {
     count = await Employee.countDocuments();
   } catch (err) {
+    if (process.env.NODE_ENV === 'production') throw err;
     count = inMemoryEmployees.length;
   }
 
@@ -250,6 +251,7 @@ const upsertSalaryHistory = async (empData: any) => {
       { upsert: true, new: true }
     );
   } catch (err) {
+    if (process.env.NODE_ENV === 'production') throw err;
     const idx = inMemorySalaryHistory.findIndex(
       (h) => h.employeeId === empId && h.month === monthInfo.month && h.year === monthInfo.year
     );
@@ -286,6 +288,7 @@ const createAutoInvoice = async (employee: any) => {
   try {
     return await Invoice.create(payload);
   } catch (err) {
+    if (process.env.NODE_ENV === 'production') throw err;
     return payload;
   }
 };
@@ -328,6 +331,7 @@ export class EmployeeService {
       return { employee: newEmp, invoice };
     } catch (dbErr: any) {
       if (dbErr.message && dbErr.message.includes('already exists')) throw dbErr;
+      if (process.env.NODE_ENV === 'production') throw dbErr;
 
       const statusVal = (data.status ? data.status.toUpperCase() : 'ACTIVE') as EmployeeStatusEnum;
 
@@ -422,6 +426,8 @@ export class EmployeeService {
         stats,
       };
     } catch (dbErr) {
+      if (process.env.NODE_ENV === 'production') throw dbErr;
+
       let filtered = [...inMemoryEmployees];
 
       if (status) {
@@ -479,6 +485,9 @@ export class EmployeeService {
       if (!emp) throw new Error('Employee record not found');
       return emp;
     } catch (err: any) {
+      if (err.message && err.message.includes('not found')) throw err;
+      if (process.env.NODE_ENV === 'production') throw err;
+
       const found = inMemoryEmployees.find(
         (e) => e._id === id || e.employeeId === id || e.employeeCode === id
       );
@@ -501,7 +510,10 @@ export class EmployeeService {
       if (!emp) throw new Error('Employee not found');
       await upsertSalaryHistory(emp);
       return emp;
-    } catch (err) {
+    } catch (err: any) {
+      if (err.message && err.message.includes('not found')) throw err;
+      if (process.env.NODE_ENV === 'production') throw err;
+
       const idx = inMemoryEmployees.findIndex((e) => e._id === id || e.employeeId === id);
       if (idx === -1) throw new Error('Employee not found');
       inMemoryEmployees[idx] = { ...inMemoryEmployees[idx], ...updates };
@@ -517,7 +529,10 @@ export class EmployeeService {
       });
       if (!deleted) throw new Error('Employee not found');
       return true;
-    } catch (err) {
+    } catch (err: any) {
+      if (err.message && err.message.includes('not found')) throw err;
+      if (process.env.NODE_ENV === 'production') throw err;
+
       const idx = inMemoryEmployees.findIndex((e) => e._id === id || e.employeeId === id);
       if (idx === -1) throw new Error('Employee not found');
       inMemoryEmployees.splice(idx, 1);
@@ -531,7 +546,10 @@ export class EmployeeService {
       const emp = await Employee.findOne({ passportNumber: pStr });
       if (!emp) throw new Error(`No employee found with passport ${pStr}`);
       return emp;
-    } catch (err) {
+    } catch (err: any) {
+      if (err.message && err.message.includes('No employee found')) throw err;
+      if (process.env.NODE_ENV === 'production') throw err;
+
       const found = inMemoryEmployees.find((e) => e.passportNumber.toUpperCase() === pStr);
       if (!found) throw new Error(`No employee found with passport ${pStr}`);
       return found;
@@ -546,7 +564,10 @@ export class EmployeeService {
       });
       if (!emp) throw new Error(`No employee found with code ${cStr}`);
       return emp;
-    } catch (err) {
+    } catch (err: any) {
+      if (err.message && err.message.includes('No employee found')) throw err;
+      if (process.env.NODE_ENV === 'production') throw err;
+
       const found = inMemoryEmployees.find(
         (e) => e.employeeCode.toUpperCase() === cStr || e.employeeId.toUpperCase() === cStr
       );
@@ -560,6 +581,7 @@ export class EmployeeService {
     try {
       list = await Employee.find().sort({ srNo: 1 });
     } catch (err) {
+      if (process.env.NODE_ENV === 'production') throw err;
       list = inMemoryEmployees;
     }
 
@@ -672,6 +694,7 @@ export class EmployeeService {
     try {
       existingEmps = await Employee.find({}, 'employeeCode passportNumber');
     } catch (err) {
+      if (process.env.NODE_ENV === 'production') throw err;
       existingEmps = inMemoryEmployees;
     }
 
@@ -831,6 +854,7 @@ export class EmployeeService {
         try {
           savedDoc = await Employee.create(payload);
         } catch (dbErr: any) {
+          if (process.env.NODE_ENV === 'production') throw dbErr;
           savedDoc = {
             ...payload,
             _id: 'emp_' + Date.now() + Math.floor(Math.random() * 1000),
@@ -877,6 +901,7 @@ export class EmployeeService {
 
       return historyList;
     } catch (err) {
+      if (process.env.NODE_ENV === 'production') throw err;
       const emp = await this.getById(employeeId);
       const eId = emp.employeeId || emp._id;
       let historyList = inMemorySalaryHistory.filter((h) => h.employeeId === eId);
@@ -912,6 +937,7 @@ export class EmployeeService {
         year: targetYear,
       });
     } catch (err) {
+      if (process.env.NODE_ENV === 'production') throw err;
       historyRecord = inMemorySalaryHistory.find(
         (h) => h.employeeId === eId && h.month === targetMonth && h.year === targetYear
       );
